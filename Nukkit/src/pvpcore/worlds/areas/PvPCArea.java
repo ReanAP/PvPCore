@@ -290,7 +290,7 @@ public class PvPCArea implements IKnockbackObject {
                         levelName,
                         firstPos,
                         secondPos,
-                        new PvPCKnockback(((Number) kbY).floatValue(), ((Number) kbXZ).floatValue(), ((Number) attackDelay).intValue()),
+                        new PvPCKnockback(((Number) kbXZ).floatValue(), ((Number) kbY).floatValue(), ((Number) attackDelay).intValue()),
                         enabled
                 );
             }
@@ -316,3 +316,4 @@ public class PvPCArea implements IKnockbackObject {
         return null;
     }
 }
+

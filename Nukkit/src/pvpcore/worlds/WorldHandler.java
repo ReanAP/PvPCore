@@ -3,222 +3,128 @@ package pvpcore.worlds;
 import cn.nukkit.Player;
 import cn.nukkit.Server;
 import cn.nukkit.level.Level;
-import org.json.simple.JSONObject;
-import org.json.simple.parser.JSONParser;
-import org.yaml.snakeyaml.DumperOptions;
-import org.yaml.snakeyaml.Yaml;
+import cn.nukkit.utils.Config;
 import pvpcore.PvPCore;
 import pvpcore.utils.Utils;
 
 import java.io.File;
-import java.io.FileReader;
-import java.io.FileWriter;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class WorldHandler {
 
-    /** The accessor to the PvPCore. */
-    private PvPCore core;
-    /** The accessor to the server. */
-    private Server server;
+    private final PvPCore core;
+    private final Server server;
+    private final File worldsFile;
+    private final ConcurrentHashMap<String, PvPCWorld> worlds = new ConcurrentHashMap<>();
 
-    /** The path to the worlds.json file. */
-    private File worldsFile;
-
-    /** The ConcurrentMap containing all of the worlds */
-    private ConcurrentHashMap<String, PvPCWorld> worlds;
-
-    /**
-     * The world handler constructor.
-     * @param core - The main plugin core.
-     */
-    public WorldHandler(PvPCore core)
-    {
+    public WorldHandler(PvPCore core) {
         this.core = core;
         this.server = core.getServer();
-
-        this.worlds = new ConcurrentHashMap<>();
-
         this.worldsFile = new File(core.getDataFolder(), "worlds.json");
         this.init();
     }
 
-    /**
-     * Initializes all of the worlds.
-     */
     private void init() {
-
-        try
-        {
-            // Creates a new file.
-            if(!this.worldsFile.exists())
-            {
-                this.worldsFile.createNewFile();
-
-                // Reads the file and gets the outputted data.
-                File configFile = new File(this.core.getDataFolder(), "config.yml");
-                if(!configFile.exists())
-                {
-                    return;
-                }
-
-                String content = cn.nukkit.utils.Utils.readFile(configFile);
-
-                // Dumps contents from yaml file and creates a hash map.
-                DumperOptions dumperOptions = new DumperOptions();
-                dumperOptions.setDefaultFlowStyle(DumperOptions.FlowStyle.BLOCK);
-
-                Yaml yaml = new Yaml(dumperOptions);
-                LinkedHashMap dataMap = yaml.loadAs(content, LinkedHashMap.class);
-
-                if(!dataMap.containsKey("levels"))
-                {
-                    return;
-                }
-
-                // Iterates through the levels map & decodes.
-                HashMap levelsMap = (HashMap) dataMap.get("levels");
-                for(Object levelName : levelsMap.keySet())
-                {
-                    Object value = levelsMap.get(levelName);
-                    if(levelName instanceof String)
-                    {
-                        PvPCWorld world = PvPCWorld.decodeLegacy((String) levelName, value);
-                        if(world != null)
-                        {
-                            this.worlds.put(world.getLevelName(), world);
-                        }
-                    }
-                }
+        try {
+            if (!this.worldsFile.exists()) {
+                this.loadLegacyConfig();
+                this.save();
                 return;
             }
 
-            // Reads the JSON file.
-            FileReader reader = new FileReader(this.worldsFile);
-            JSONParser parser = new JSONParser();
-            Object worldsData = parser.parse(reader);
-
-            if(worldsData instanceof JSONObject)
-            {
-                Set keys = ((JSONObject) worldsData).keySet();
-                for(Object key : keys)
-                {
-                    String worldName = (String)key;
-                    Object worldInformation = ((JSONObject) worldsData).get(key);
-                    PvPCWorld world = PvPCWorld.decode(worldName, worldInformation);
-                    if(world != null)
-                    {
-                        this.worlds.put(world.getLevelName(), world);
-                    }
+            Config config = new Config(this.worldsFile, Config.JSON);
+            for (Map.Entry<String, Object> entry : config.getAll().entrySet()) {
+                PvPCWorld world = PvPCWorld.decode(entry.getKey(), entry.getValue());
+                if (world != null) {
+                    this.worlds.put(world.getLevelName(), world);
                 }
             }
-            reader.close();
-
-        } catch (Exception e) {}
+        } catch (Exception exception) {
+            this.core.getLogger().warning("Failed to load worlds.json: " + exception.getMessage());
+        }
     }
 
-    /**
-     * Gets the world from the world manager.
-     * @param level - The level to get the corresponding information.
-     * @return PvPCWorld if successful or null.
-     */
-    public PvPCWorld getWorld(Object level)
-    {
-        if(level instanceof Level)
-        {
-            if(!this.worlds.containsKey(((Level) level).getName()))
-            {
-                PvPCWorld world = new PvPCWorld((Level) level);
-                this.worlds.put(((Level) level).getName(), world);
-                return world;
-            }
+    private void loadLegacyConfig() {
+        File configFile = new File(this.core.getDataFolder(), "config.yml");
+        if (!configFile.exists()) {
+            return;
+        }
 
-            PvPCWorld world = this.worlds.get(((Level) level).getName());
-            if(!Utils.levelsEqual(world.getLevel(), level))
-            {
-                world.setLevel((Level) level);
+        Config legacyConfig = new Config(configFile, Config.YAML);
+        Object levels = legacyConfig.get("levels");
+        if (!(levels instanceof Map<?, ?> levelsMap)) {
+            return;
+        }
+
+        for (Map.Entry<?, ?> entry : levelsMap.entrySet()) {
+            if (entry.getKey() instanceof String levelName) {
+                PvPCWorld world = PvPCWorld.decodeLegacy(levelName, entry.getValue());
+                if (world != null) {
+                    this.worlds.put(world.getLevelName(), world);
+                }
+            }
+        }
+    }
+
+    public PvPCWorld getWorld(Object level) {
+        if (level instanceof Level nukkitLevel) {
+            PvPCWorld world = this.worlds.computeIfAbsent(nukkitLevel.getName(), ignored -> new PvPCWorld(nukkitLevel));
+            if (!Utils.levelsEqual(world.getLevel(), nukkitLevel)) {
+                world.setLevel(nukkitLevel);
             }
             return world;
         }
-        else if (level instanceof String)
-        {
-            boolean loaded = true;
-            if(!this.server.isLevelLoaded((String)level))
-            {
-                loaded = this.server.loadLevel((String)level);
-            }
 
-            return loaded ? this.getWorld(this.server.getLevelByName((String)level)) : null;
+        if (level instanceof String levelName) {
+            boolean loaded = this.server.isLevelLoaded(levelName) || this.server.loadLevel(levelName);
+            return loaded ? this.getWorld(this.server.getLevelByName(levelName)) : null;
         }
 
         return null;
     }
 
-    /**
-     * Gets the knockback from the world the players are in.
-     * @param player1 - The first player.
-     * @param player2 - The second player.
-     * @return PvPCWorld or null
-     */
-    public PvPCWorld getWorldKnockback(Player player1, Player player2)
-    {
-        for(PvPCWorld world : this.worlds.values())
-        {
-            if(world.canUseKnockback(player1, player2))
-            {
+    public PvPCWorld getWorldKnockback(Player player1, Player player2) {
+        for (PvPCWorld world : this.worlds.values()) {
+            if (world.canUseKnockback(player1, player2)) {
                 return world;
             }
         }
 
-        if(Utils.levelsEqual(player1.level, player2.level))
-        {
-            return this.getWorld(player1.level);
+        if (Utils.levelsEqual(player1.getLevel(), player2.getLevel())) {
+            return this.getWorld(player1.getLevel());
         }
 
         return null;
     }
 
-    /**
-     * Gets all of the worlds in the handler.
-     * @return ArrayList of the worlds.
-     */
-    public ArrayList<PvPCWorld> getWorlds()
-    {
-        ArrayList<PvPCWorld> worlds = new ArrayList<>();
+    public ArrayList<PvPCWorld> getWorlds() {
+        ArrayList<PvPCWorld> output = new ArrayList<>();
         Collection<Level> levels = this.server.getLevels().values();
-
-        for(Level level : levels)
-        {
+        for (Level level : levels) {
             PvPCWorld world = this.getWorld(level);
-            if(world != null)
-            {
-                worlds.add(world);
+            if (world != null) {
+                output.add(world);
             }
         }
-        return worlds;
+        return output;
     }
 
-    /**
-     * Saves the worlds to the file.
-     */
-    public void save()
-    {
-        try
-        {
-            JSONObject object = new JSONObject();
-            for(PvPCWorld world : this.worlds.values())
-            {
-                object.put(world.getLevelName(), world.export());
+    public void save() {
+        try {
+            LinkedHashMap<String, Object> output = new LinkedHashMap<>();
+            for (PvPCWorld world : this.worlds.values()) {
+                output.put(world.getLevelName(), world.export());
             }
 
-            FileWriter writer = new FileWriter(this.worldsFile);
-            object.writeJSONString(writer);
-            writer.close();
-
-        } catch (Exception e)
-        {
-            e.printStackTrace();
+            Config config = new Config(this.worldsFile, Config.JSON);
+            config.setAll(output);
+            config.save();
+        } catch (Exception exception) {
+            this.core.getLogger().error("Failed to save worlds.json", exception);
         }
     }
 }

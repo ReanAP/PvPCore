@@ -7,10 +7,9 @@ namespace jkorn\pvpcore\world;
 use jkorn\pvpcore\PvPCore;
 use jkorn\pvpcore\utils\PvPCKnockback;
 use jkorn\pvpcore\utils\Utils;
-use pocketmine\level\Level;
-use pocketmine\Player;
+use pocketmine\world\World;
+use pocketmine\player\Player;
 use pocketmine\Server;
-use pocketmine\utils\Config;
 
 /**
  * Created by PhpStorm.
@@ -92,36 +91,35 @@ class WorldHandler
     }
 
     /**
-     * @param string|Level $level
+     * @param string|World $world
      * @return PvPCWorld|null
      *
-     * Gets the pvp world from the level (name or instance).
+     * Gets the pvp world from the world name or instance.
      */
-    public function getWorld($level)
+    public function getWorld($world)
     {
-        if ($level instanceof Level) {
-            if (!isset($this->worlds[$levelName = $level->getName()])) {
-                $this->worlds[$levelName] = $world = new PvPCWorld($levelName, true, new PvPCKnockback());
-                return $world;
+        if ($world instanceof World) {
+            if (!isset($this->worlds[$worldName = $world->getFolderName()])) {
+                $this->worlds[$worldName] = $pvpWorld = new PvPCWorld($worldName, true, new PvPCKnockback());
+                return $pvpWorld;
             }
 
-            $world = $this->worlds[$levelName];
-            $wLevel = $world->getLevel();
-            if($wLevel === null)
-            {
-                $world->setLevel($level);
+            $pvpWorld = $this->worlds[$worldName];
+            if($pvpWorld->getWorld() === null) {
+                $pvpWorld->setWorld($world);
             }
-            return $world;
-        } elseif (is_string($level)) {
+            return $pvpWorld;
+        } elseif (is_string($world)) {
+            $worldManager = $this->server->getWorldManager();
             $loaded = true;
-            if (!$this->server->isLevelLoaded($level)) {
-                $loaded = $this->server->loadLevel($level);
+            if (!$worldManager->isWorldLoaded($world)) {
+                $loaded = $worldManager->loadWorld($world);
             }
 
             if (!$loaded) {
                 return null;
             }
-            return $this->getWorld($this->server->getLevelByName($level));
+            return $this->getWorld($worldManager->getWorldByName($world));
         }
         return null;
     }
@@ -143,9 +141,9 @@ class WorldHandler
             }
         }
 
-        if(Utils::areLevelsEqual($level = $player1->getLevel(), $player2->getLevel()))
+        if(Utils::areLevelsEqual($world = $player1->getWorld(), $player2->getWorld()))
         {
-            return $this->getWorld($level);
+            return $this->getWorld($world);
         }
 
         return null;
@@ -158,10 +156,10 @@ class WorldHandler
     public function getWorlds()
     {
         $worlds = [];
-        $levels = $this->server->getLevels();
-        foreach($levels as $level)
+        $loadedWorlds = $this->server->getWorldManager()->getWorlds();
+        foreach($loadedWorlds as $world)
         {
-            $pvpCWorld = $this->getWorld($level);
+            $pvpCWorld = $this->getWorld($world);
             if($pvpCWorld instanceof PvPCWorld)
             {
                 $worlds[] = $pvpCWorld;

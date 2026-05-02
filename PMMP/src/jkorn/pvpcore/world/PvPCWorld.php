@@ -8,9 +8,9 @@ use jkorn\pvpcore\utils\IKBObject;
 use jkorn\pvpcore\utils\PvPCKnockback;
 use jkorn\pvpcore\utils\IExportedValue;
 use jkorn\pvpcore\utils\Utils;
-use pocketmine\Player;
+use pocketmine\player\Player;
 use pocketmine\Server;
-use pocketmine\level\Level;
+use pocketmine\world\World;
 
 /**
  * Created by PhpStorm.
@@ -21,8 +21,8 @@ use pocketmine\level\Level;
 class PvPCWorld implements IKBObject
 {
 
-    /** @var Level|null */
-    private $level;
+    /** @var World|null */
+    private $world;
 
     /** @var bool */
     private $customKb;
@@ -42,14 +42,14 @@ class PvPCWorld implements IKBObject
     {
         $this->customKb = $kb;
         $this->localizedLevel = $lvl;
-        $this->level = Server::getInstance()->getLevelByName($lvl);
+        $this->world = Server::getInstance()->getWorldManager()->getWorldByName($lvl);
         $this->knockbackInfo = $knockback;
     }
 
     /**
      * @return string
      *
-     * Gets the localized name of the level.
+     * Gets the localized name of the World.
      */
     public function getLocalizedLevel(): string
     {
@@ -57,24 +57,24 @@ class PvPCWorld implements IKBObject
     }
 
     /**
-     * @return Level|null
+     * @return World|null
      *
-     * Gets the level in the world.
+     * Gets the World in the world.
      */
-    public function getLevel(): ?Level
+    public function getWorld(): ?World
     {
-        return $this->level;
+        return $this->world;
     }
 
     /**
-     * @param Level $level
+     * @param World $world
      *
-     * Called to reload the level information.
+     * Called to reload the World information.
      */
-    public function setLevel(Level $level): void
+    public function setWorld(World $world): void
     {
-        $this->localizedLevel = $level->getName();
-        $this->level = $level;
+        $this->localizedLevel = $world->getFolderName();
+        $this->world = $world;
     }
 
 
@@ -130,9 +130,9 @@ class PvPCWorld implements IKBObject
     public function equals($object): bool
     {
         if ($object instanceof PvPCWorld) {
-            $level = $object->getLevel();
-            if ($level instanceof Level && $this->level instanceof Level) {
-                return Utils::areLevelsEqual($this->level, $level);
+            $world = $object->getWorld();
+            if ($world instanceof World && $this->world instanceof World) {
+                return Utils::areLevelsEqual($this->world, $world);
             }
 
             return $this->knockbackInfo->equals($object->getKnockback());
@@ -150,12 +150,12 @@ class PvPCWorld implements IKBObject
      */
     public function canUseKnocback(Player $player1, Player $player2): bool
     {
-        if (!$this->level instanceof Level || !$this->customKb) {
+        if (!$this->world instanceof World || !$this->customKb) {
             return false;
         }
 
-        return Utils::areLevelsEqual($player1->getLevel(), $this->level)
-            && Utils::areLevelsEqual($player2->getLevel(), $this->level);
+        return Utils::areLevelsEqual($player1->getWorld(), $this->world)
+            && Utils::areLevelsEqual($player2->getWorld(), $this->world);
     }
 
     /**

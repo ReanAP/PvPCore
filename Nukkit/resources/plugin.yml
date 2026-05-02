@@ -1,10 +1,12 @@
 name: PvPCore
 author: "jkorn"
 main: pvpcore.PvPCore
-version: 2.0.2
+version: "2.1.0"
 website: "https://github.com/jkorn2324"
-api: ["1.0.0"]
+api: ["2.0.0"]
+load: POSTWORLD
 description: A plugin that edits the knockback taken by players.
+prefix: "PvPCore"
 
 permissions:
   pvpcore.permission.edit:

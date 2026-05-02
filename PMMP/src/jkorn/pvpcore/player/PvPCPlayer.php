@@ -13,12 +13,11 @@ namespace jkorn\pvpcore\player;
 use jkorn\pvpcore\PvPCore;
 use jkorn\pvpcore\utils\PvPCKnockback;
 use jkorn\pvpcore\utils\Utils;
-use pocketmine\entity\Attribute;
-use pocketmine\entity\Entity;
 use pocketmine\event\entity\EntityDamageByEntityEvent;
 use pocketmine\event\entity\EntityDamageEvent;
 use pocketmine\form\Form;
-use pocketmine\Player;
+use pocketmine\math\Vector3;
+use pocketmine\player\Player;
 use pocketmine\utils\TextFormat;
 use stdClass;
 
@@ -29,6 +28,8 @@ class PvPCPlayer extends Player
     private $pvpAreaInfo = null;
     /** @var bool - Determines if player is looking at a form. */
     private $lookingAtForm = false;
+    /** @var PvPCKnockback|null */
+    private $activeKnockback = null;
 
     /**
      * Sets the first position of the area information.
@@ -83,47 +84,41 @@ class PvPCPlayer extends Player
     }
 
     /**
-     * @param Entity $attacker
-     * @param float $damage
      * @param float $x
      * @param float $z
-     * @param float $base
+     * @param float $force
+     * @param float|null $verticalLimit
      *
      * Gives the player knockback values.
      */
-    public function knockBack(Entity $attacker, float $damage, float $x, float $z, float $base = 0.4): void
+    public function knockBack(float $x, float $z, float $force = self::DEFAULT_KNOCKBACK_FORCE, ?float $verticalLimit = self::DEFAULT_KNOCKBACK_VERTICAL_LIMIT): void
     {
-        $xzKB = $base;
-        $yKb = $base;
-        if ($attacker instanceof Player) {
-            $knockback = Utils::getKnockbackFor($this, $attacker);
-            if ($knockback instanceof PvPCKnockback) {
-                $xzKB = $knockback->getXZKb();
-                $yKb = $knockback->getYKb();
-            }
+        $xzKB = $force;
+        $yKb = $verticalLimit ?? $force;
+        if ($this->activeKnockback instanceof PvPCKnockback) {
+            $xzKB = $this->activeKnockback->getXZKb();
+            $yKb = $this->activeKnockback->getYKb();
         }
 
         $f = sqrt($x * $x + $z * $z);
         if ($f <= 0) {
             return;
         }
-        if (mt_rand() / mt_getrandmax() > $this->getAttributeMap()->getAttribute(Attribute::KNOCKBACK_RESISTANCE)->getValue()) {
+        if (mt_rand() / mt_getrandmax() > $this->knockbackResistanceAttr->getValue()) {
             $f = 1 / $f;
 
-            $motion = clone $this->motion;
+            $motionX = $this->motion->x / 2;
+            $motionY = $this->motion->y / 2;
+            $motionZ = $this->motion->z / 2;
+            $motionX += $x * $f * $xzKB;
+            $motionY += $yKb;
+            $motionZ += $z * $f * $xzKB;
 
-            $motion->x /= 2;
-            $motion->y /= 2;
-            $motion->z /= 2;
-            $motion->x += $x * $f * $xzKB;
-            $motion->y += $yKb;
-            $motion->z += $z * $f * $xzKB;
-
-            if ($motion->y > $yKb) {
-                $motion->y = $yKb;
+            if ($motionY > $yKb) {
+                $motionY = $yKb;
             }
 
-            $this->setMotion($motion);
+            $this->setMotion(new Vector3($motionX, $motionY, $motionZ));
         }
     }
 
@@ -134,29 +129,22 @@ class PvPCPlayer extends Player
      */
     public function attack(EntityDamageEvent $source): void
     {
-        parent::attack($source);
-
-        if ($source->isCancelled()) {
-            return;
-        }
-
-        $attackSpeed = $source->getAttackCooldown();
         if ($source instanceof EntityDamageByEntityEvent) {
             $damager = $source->getDamager();
             if ($damager instanceof Player) {
                 $knockback = Utils::getKnockbackFor($this, $damager);
-                if($knockback !== null) {
-                    $attackSpeed = $knockback->getSpeed();
+                if($knockback instanceof PvPCKnockback) {
+                    $source->setAttackCooldown(max(0, $knockback->getSpeed()));
+                    $this->activeKnockback = $knockback;
                 }
             }
         }
 
-        if($attackSpeed < 0) {
-            $attackSpeed = 0;
+        try {
+            parent::attack($source);
+        } finally {
+            $this->activeKnockback = null;
         }
-
-        // Sets the attack time/delay to the speed.
-        $this->attackTime = $attackSpeed;
     }
 
     /**
@@ -166,7 +154,7 @@ class PvPCPlayer extends Player
      *
      * Handled when the form was submitted.
      */
-    public function onFormSubmit(int $formId, $responseData): bool
+    public function onFormSubmit(int $formId, mixed $responseData): bool
     {
         $this->lookingAtForm = false;
         return parent::onFormSubmit($formId, $responseData);

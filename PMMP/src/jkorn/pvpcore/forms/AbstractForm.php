@@ -7,7 +7,7 @@ namespace jkorn\pvpcore\forms;
 
 use pocketmine\form\Form as IForm;
 use pocketmine\form\FormValidationException;
-use pocketmine\Player;
+use pocketmine\player\Player;
 
 class AbstractForm implements IForm
 {
@@ -86,7 +86,7 @@ class AbstractForm implements IForm
      * which is a value of any type other than a resource.
      * @since 5.4.0
      */
-    public function jsonSerialize()
+    public function jsonSerialize(): mixed
     {
         return $this->data;
     }

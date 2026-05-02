@@ -12,7 +12,7 @@ use jkorn\pvpcore\PvPCore;
 use jkorn\pvpcore\utils\Utils;
 use jkorn\pvpcore\world\areas\PvPCArea;
 use jkorn\pvpcore\world\PvPCWorld;
-use pocketmine\Player;
+use pocketmine\player\Player;
 use pocketmine\utils\TextFormat;
 
 class PvPCoreForms

@@ -15,9 +15,9 @@ use jkorn\pvpcore\PvPCore;
 use jkorn\pvpcore\world\areas\PvPCArea;
 use jkorn\pvpcore\world\PvPCWorld;
 use pocketmine\command\Command;
-use pocketmine\level\Level;
+use pocketmine\world\World;
 use pocketmine\math\Vector3;
-use pocketmine\Player;
+use pocketmine\player\Player;
 use pocketmine\Server;
 use pocketmine\utils\TextFormat;
 
@@ -132,31 +132,25 @@ class Utils
     }
 
     /**
-     * @param Level $level1
-     * @param Level $level2
+     * @param World $world1
+     * @param World $world2
      * @return bool
      *
-     * Determines if the levels are equivalent.
+     * Determines if the worlds are equivalent.
      */
-    public static function areLevelsEqual(Level $level1, Level $level2)
+    public static function areLevelsEqual(World $world1, World $world2): bool
     {
-        return $level1->getId() === $level2->getId();
+        return $world1 === $world2 || $world1->getId() === $world2->getId();
     }
 
     /**
-     * Loads all of the levels on the server.
+     * Loads all of the worlds on the server.
      * @param PvPCore|null $core - The PvPCore main file.
      */
     public static function loadLevels(?PvPCore $core = null): void
     {
         $core = $core ?? PvPCore::getInstance();
-        $index = strpos($dataFolder = $core->getDataFolder(), "/plugin_data");
-        if($index === false)
-        {
-            return;
-        }
-
-        $worldsFolder = substr($dataFolder, 0, $index) . "/worlds";
+        $worldsFolder = $core->getServer()->getDataPath() . "worlds";
         if(!is_dir($worldsFolder))
         {
             return;
@@ -169,11 +163,12 @@ class Utils
         }
 
         $server = $core->getServer();
+        $worldManager = $server->getWorldManager();
         foreach($files as $file)
         {
-            if(!$server->isLevelLoaded($file) && strpos($file, ".") === false)
+            if(!$worldManager->isWorldLoaded($file) && strpos($file, ".") === false)
             {
-                $server->loadLevel($file);
+                $worldManager->loadWorld($file);
             }
         }
     }

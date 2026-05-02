@@ -1,17 +1,13 @@
 package pvpcore.forms;
 
 import cn.nukkit.Player;
-import cn.nukkit.form.element.ElementButtonImageData;
-import cn.nukkit.form.element.ElementInput;
-import cn.nukkit.form.element.ElementLabel;
-import cn.nukkit.form.element.ElementToggle;
-import cn.nukkit.form.response.FormResponseCustom;
-import cn.nukkit.form.response.FormResponseSimple;
-import cn.nukkit.form.window.FormWindow;
+import cn.nukkit.form.element.simple.ButtonImage;
+import cn.nukkit.form.response.CustomResponse;
+import cn.nukkit.form.window.CustomForm;
+import cn.nukkit.form.window.Form;
+import cn.nukkit.form.window.SimpleForm;
 import cn.nukkit.utils.TextFormat;
 import pvpcore.PvPCore;
-import pvpcore.forms.def.types.CallbackCustomForm;
-import pvpcore.forms.def.types.CallbackSimpleForm;
 import pvpcore.player.PvPCorePlayer;
 import pvpcore.utils.PvPCKnockback;
 import pvpcore.utils.Utils;
@@ -21,635 +17,250 @@ import pvpcore.worlds.areas.PvPCArea;
 import java.util.ArrayList;
 import java.util.HashMap;
 
-/**
- * This class contains all of the forms we are using.
- */
-public class PvPCoreForms {
+public final class PvPCoreForms {
 
-    /**
-     * Gets the PvPCore Menu form.
-     *
-     * @param player - The player input.
-     * @return - The PvPCore menu form.
-     */
-    public static CallbackSimpleForm getPvPCoreMenu(Player player) {
+    private static final ButtonImage DEV_ICON = ButtonImage.Type.PATH.of("textures/ui/dev_glyph_color.png");
+    private static final ButtonImage DEBUG_ICON = ButtonImage.Type.PATH.of("textures/ui/debug_glyph_color.png");
+    private static final ButtonImage VIEW_ICON = ButtonImage.Type.PATH.of("textures/ui/magnifyingGlass.png");
+    private static final ButtonImage ADD_ICON = ButtonImage.Type.PATH.of("textures/ui/color_plus.png");
+    private static final ButtonImage DELETE_ICON = ButtonImage.Type.PATH.of("textures/ui/realms_red_x.png");
+    private static final ButtonImage NONE_ICON = ButtonImage.Type.PATH.of("textures/ui/redX1.png");
+    private static final ButtonImage WORLD_ICON = ButtonImage.Type.PATH.of("textures/ui/op.png");
+    private static final ButtonImage AREA_ICON = ButtonImage.Type.PATH.of("textures/ui/deop.png");
+    private static final ButtonImage YES_ICON = ButtonImage.Type.PATH.of("textures/ui/check.png");
+    private static final ButtonImage NO_ICON = ButtonImage.Type.PATH.of("textures/ui/cancel.png");
 
-        CallbackSimpleForm form = new CallbackSimpleForm((responsePlayer, response, extraData) -> {
-
-            if (response instanceof FormResponseSimple) {
-                int button = ((FormResponseSimple) response).getClickedButtonId();
-                FormWindow window = null;
-                switch (button) {
-                    case 0:
-                        window = PvPCoreForms.getWorldsMenu(responsePlayer);
-                        break;
-                    case 1:
-                        window = PvPCoreForms.getAreasMenu(responsePlayer);
-                        break;
-                }
-
-                if (window != null) {
-                    responsePlayer.showFormWindow(window);
-                }
-            }
-        });
-
-        form.setTitle(TextFormat.BOLD.toString() + "PvPCore Menu");
-        form.setContent("The menu used to configure the PvPCore plugin.");
-
-        form.addButton("Configure Worlds", ElementButtonImageData.IMAGE_DATA_TYPE_PATH, "textures/ui/dev_glyph_color.png");
-        form.addButton("Configure Areas", ElementButtonImageData.IMAGE_DATA_TYPE_PATH, "textures/ui/dev_glyph_color.png");
-
-        return form;
+    private PvPCoreForms() {
     }
 
-    /**
-     * Gets the worlds menu form.
-     *
-     * @param player - The input player for the worlds menu.
-     * @return - The CallbackSimpleForm.
-     */
-    public static CallbackSimpleForm getWorldsMenu(Player player) {
-
-        CallbackSimpleForm form = new CallbackSimpleForm((responsePlayer, response, extraData) -> {
-
-            if (response instanceof FormResponseSimple) {
-                int clickedID = ((FormResponseSimple) response).getClickedButtonId();
-                FormWindow window = null;
-                switch (clickedID) {
-                    case 0:
-                    case 1:
-                        window = PvPCoreForms.getWorldSelectorForm(responsePlayer, Boolean.parseBoolean(Integer.toString(clickedID)));
-                        break;
-                    case 2:
-                        window = PvPCoreForms.getPvPCoreMenu(responsePlayer);
-                        break;
-                }
-
-                if (window != null) {
-                    responsePlayer.showFormWindow(window);
-                }
-            }
-        });
-
-        form.setTitle("Worlds Configuration");
-        form.setContent("The worlds configuration menu.");
-
-        form.addButton("Edit World Knockback Settings", ElementButtonImageData.IMAGE_DATA_TYPE_PATH, "textures/ui/debug_glyph_color.png");
-        form.addButton("View World Knockback Settings", ElementButtonImageData.IMAGE_DATA_TYPE_PATH, "textures/ui/magnifyingGlass.png");
-        form.addButton("Go Back");
-
-        return form;
+    public static SimpleForm getPvPCoreMenu(Player player) {
+        return new SimpleForm(TextFormat.BOLD + "PvPCore Menu", "The menu used to configure the PvPCore plugin.")
+                .addButton("Configure Worlds", DEV_ICON, responsePlayer -> getWorldsMenu(responsePlayer).send(responsePlayer))
+                .addButton("Configure Areas", DEV_ICON, responsePlayer -> getAreasMenu(responsePlayer).send(responsePlayer));
     }
 
-    /**
-     * Gets the areas form menu.
-     *
-     * @param player - The player we are sending the form to.
-     * @return - The areas menu form.
-     */
-    public static CallbackSimpleForm getAreasMenu(Player player) {
-
-        CallbackSimpleForm form = new CallbackSimpleForm((responsePlayer, response, extraData) -> {
-
-            if (response instanceof FormResponseSimple) {
-                int buttonID = ((FormResponseSimple) response).getClickedButtonId();
-                FormWindow window = null;
-
-                switch (buttonID) {
-                    case 0:
-                        window = PvPCoreForms.getAreaSelectorMenu(responsePlayer, Utils.ACTION_EDIT_AREA);
-                        break;
-                    case 1:
-                        window = PvPCoreForms.getAreaSelectorMenu(responsePlayer, Utils.ACTION_VIEW_AREA);
-                        break;
-                    case 2:
-                        window = PvPCoreForms.getCreateAreaForm(responsePlayer);
-                        break;
-                    case 3:
-                        window = PvPCoreForms.getAreaSelectorMenu(responsePlayer, Utils.ACTION_DELETE_AREA);
-                        break;
-                    case 4:
-                        window = PvPCoreForms.getPvPCoreMenu(responsePlayer);
-                        break;
-                }
-
-                if (window != null) {
-                    responsePlayer.showFormWindow(window);
-                }
-            }
-        });
-
-        form.setTitle("Areas Configuration");
-        form.setContent("The areas configuration menu.");
-
-        form.addButton("Edit Area Knockback Settings", ElementButtonImageData.IMAGE_DATA_TYPE_PATH, "textures/ui/debug_glyph_color.png");
-        form.addButton("View Area Knockback Settings", ElementButtonImageData.IMAGE_DATA_TYPE_PATH, "textures/ui/magnifyingGlass.png");
-        form.addButton("Create New Area", ElementButtonImageData.IMAGE_DATA_TYPE_PATH, "textures/ui/color_plus.png");
-        form.addButton("Delete Existing Area", ElementButtonImageData.IMAGE_DATA_TYPE_PATH, "textures/ui/realms_red_x.png");
-        form.addButton("Go Back");
-
-        return form;
+    public static SimpleForm getWorldsMenu(Player player) {
+        return new SimpleForm("Worlds Configuration", "The worlds configuration menu.")
+                .addButton("Edit World Knockback Settings", DEBUG_ICON, responsePlayer -> getWorldSelectorForm(responsePlayer, false).send(responsePlayer))
+                .addButton("View World Knockback Settings", VIEW_ICON, responsePlayer -> getWorldSelectorForm(responsePlayer, true).send(responsePlayer))
+                .addButton("Go Back", responsePlayer -> getPvPCoreMenu(responsePlayer).send(responsePlayer));
     }
 
-    /**
-     * Gets the world selector form window.
-     *
-     * @param player   - The player we are sending the form window to.
-     * @param viewInfo - Determines whether we are viewing or editing the kb world values.
-     * @return - The Form Window.
-     */
-    public static CallbackSimpleForm getWorldSelectorForm(Player player, boolean viewInfo) {
+    public static SimpleForm getAreasMenu(Player player) {
+        return new SimpleForm("Areas Configuration", "The areas configuration menu.")
+                .addButton("Edit Area Knockback Settings", DEBUG_ICON, responsePlayer -> getAreaSelectorMenu(responsePlayer, Utils.ACTION_EDIT_AREA).send(responsePlayer))
+                .addButton("View Area Knockback Settings", VIEW_ICON, responsePlayer -> getAreaSelectorMenu(responsePlayer, Utils.ACTION_VIEW_AREA).send(responsePlayer))
+                .addButton("Create New Area", ADD_ICON, responsePlayer -> getCreateAreaForm(responsePlayer).send(responsePlayer))
+                .addButton("Delete Existing Area", DELETE_ICON, responsePlayer -> getAreaSelectorMenu(responsePlayer, Utils.ACTION_DELETE_AREA).send(responsePlayer))
+                .addButton("Go Back", responsePlayer -> getPvPCoreMenu(responsePlayer).send(responsePlayer));
+    }
 
-        CallbackSimpleForm form = new CallbackSimpleForm((responsePlayer, response, extraData) -> {
-
-            if (response instanceof FormResponseSimple) {
-
-                ArrayList worlds = (ArrayList) extraData.get("worlds");
-                if(worlds.size() <= 0)
-                {
-                    return;
-                }
-
-                PvPCWorld world = PvPCore.getWorldHandler().getWorld(
-                        worlds.get(((FormResponseSimple) response).getClickedButtonId())
-                );
-
-                if(world == null)
-                {
-                    // TODO: Send message.
-                    return;
-                }
-
-                boolean dataViewInfo = (boolean) extraData.get("view");
-                FormWindow menu = PvPCoreForms.getWorldMenu(responsePlayer, world, dataViewInfo);
-                responsePlayer.showFormWindow(menu);
-            }
-        });
-
-        form.setTitle("Select World");
-        form.setContent("Select the world that you want to view/configure the knockback for.");
-
+    public static SimpleForm getWorldSelectorForm(Player player, boolean viewInfo) {
+        SimpleForm form = new SimpleForm("Select World", "Select the world that you want to view/configure the knockback for.");
         ArrayList<PvPCWorld> worlds = PvPCore.getWorldHandler().getWorlds();
-        ArrayList<String> inputWorlds = new ArrayList<>();
-
-        form.addExtraData("view", viewInfo);
-
-        if(worlds.size() <= 0) {
-            form.addButton("None", ElementButtonImageData.IMAGE_DATA_TYPE_PATH, "textures/ui/redX1.png");
-            form.addExtraData("worlds", inputWorlds);
+        if (worlds.isEmpty()) {
+            form.addButton("None", NONE_ICON);
             return form;
         }
 
-        for(PvPCWorld world : worlds)
-        {
-            form.addButton(
-                    world.getLevelName(),
-                    ElementButtonImageData.IMAGE_DATA_TYPE_PATH,
-                    "textures/ui/op.png"
-            );
-            inputWorlds.add(world.getLevelName());
+        for (PvPCWorld world : worlds) {
+            form.addButton(world.getLevelName(), WORLD_ICON, responsePlayer -> getWorldMenu(responsePlayer, world, viewInfo).send(responsePlayer));
         }
-
-        form.addExtraData("worlds", inputWorlds);
         return form;
     }
 
-    /**
-     * Gets the area selector form.
-     *
-     * @param player - The player we are sending the form to.
-     * @param type   - The type of form we are sending.
-     * @return - A Callback Simple Form.
-     */
-    public static CallbackSimpleForm getAreaSelectorMenu(Player player, int type) {
+    public static SimpleForm getAreaSelectorMenu(Player player, int type) {
+        int normalizedType = type % 3;
+        String description = switch (normalizedType) {
+            case Utils.ACTION_DELETE_AREA -> "Select the area that you want to delete.";
+            case Utils.ACTION_EDIT_AREA -> "Select the area that you want to edit.";
+            case Utils.ACTION_VIEW_AREA -> "Select the area that you want to view.";
+            default -> "Select an area.";
+        };
 
-        CallbackSimpleForm form = new CallbackSimpleForm((responsePlayer, response, extraData) -> {
-
-            if (response instanceof FormResponseSimple)
-            {
-                ArrayList areas = (ArrayList) extraData.get("areas");
-                if(areas.size() <= 0)
-                {
-                    return;
-                }
-
-                String selectedArea = (String) areas.get(((FormResponseSimple) response).getClickedButtonId());
-                PvPCArea area = PvPCore.getAreaHandler().getArea(selectedArea);
-
-                if(area == null)
-                {
-                    // TODO: Send message
-                    return;
-                }
-
-                int typeValue = (int)extraData.get("type");
-
-                FormWindow window = null;
-
-                switch(typeValue) {
-                    case Utils.ACTION_EDIT_AREA:
-                    case Utils.ACTION_VIEW_AREA:
-                        window = PvPCoreForms.getAreaMenu(responsePlayer, area, typeValue);
-                        break;
-                    case Utils.ACTION_DELETE_AREA:
-                        window = PvPCoreForms.getDeleteMenu(responsePlayer, area);
-                        break;
-                }
-
-                if (window != null) {
-                    responsePlayer.showFormWindow(window);
-                }
-            }
-
-        });
-
-        form.setTitle("Select Area");
-        type %= 3;
-
-        String description = null;
-        switch (type) {
-            case Utils.ACTION_DELETE_AREA:
-                description = "Select the area that you want to delete.";
-                break;
-            case Utils.ACTION_EDIT_AREA:
-                description = "Select the area that you want to edit.";
-                break;
-            case Utils.ACTION_VIEW_AREA:
-                description = "Select the area that you want to view.";
-                break;
-        }
-
-        if (description != null) {
-            form.setContent(description);
-        }
-
+        SimpleForm form = new SimpleForm("Select Area", description);
         ArrayList<PvPCArea> areas = PvPCore.getAreaHandler().getAreas();
-        ArrayList<String> inputAreas = new ArrayList<>();
-
-        form.addExtraData("type", type);
-
-        if (areas.size() <= 0) {
-            form.addButton("None", ElementButtonImageData.IMAGE_DATA_TYPE_PATH, "textures/ui/redX1.png");
-            form.addExtraData("areas", inputAreas);
+        if (areas.isEmpty()) {
+            form.addButton("None", NONE_ICON);
             return form;
         }
 
         for (PvPCArea area : areas) {
-            form.addButton(area.getName(), ElementButtonImageData.IMAGE_DATA_TYPE_PATH, "textures/ui/deop.png");
-            inputAreas.add(area.getName());
+            form.addButton(area.getName(), AREA_ICON, responsePlayer -> {
+                Form<?> next = switch (normalizedType) {
+                    case Utils.ACTION_EDIT_AREA, Utils.ACTION_VIEW_AREA -> getAreaMenu(responsePlayer, area, normalizedType);
+                    case Utils.ACTION_DELETE_AREA -> getDeleteMenu(responsePlayer, area);
+                    default -> null;
+                };
+                if (next != null) {
+                    next.send(responsePlayer);
+                }
+            });
         }
-
-        form.addExtraData("areas", inputAreas);
         return form;
     }
 
-    /**
-     * Gets the world knockback editor/display.
-     *
-     * @param player - The player we are sending the display to.
-     * @param world  - The PvPCWorld the player is editing.
-     * @param view   - The boolean that determines if we are viewing or editing the world.
-     * @return - A Custom Form instance.
-     */
-    public static CallbackCustomForm getWorldMenu(Player player, PvPCWorld world, boolean view) {
-
-        CallbackCustomForm form = new CallbackCustomForm((responsePlayer, response, extraData) -> {
-
-            boolean viewInfo = (boolean) (extraData).get("view");
-            if (viewInfo) {
-                FormWindow window = PvPCoreForms.getWorldSelectorForm(responsePlayer, true);
-                responsePlayer.showFormWindow(window);
-                return;
-            }
-
-            if (response instanceof FormResponseCustom) {
-
-                PvPCWorld pvpWorld = PvPCore.getWorldHandler().getWorld(extraData.get("world"));
-                if(pvpWorld == null)
-                {
-                    // TODO: Send the player a message.
-                    return;
-                }
-
-                PvPCKnockback knockback = pvpWorld.getKnockback();
-
-                int previousSpeed = knockback.getAttackDelay();
-                float previousXKB = knockback.getHorizontalKB(), previousYKB = knockback.getVerticalKB();
-                boolean previousEnabled = pvpWorld.isKBEnabled();
-
-                try {
-
-                    boolean kbEnabled = (boolean) ((FormResponseCustom) response).getResponse(2);
-                    if (previousEnabled != kbEnabled) {
-                        pvpWorld.setKBEnabled(kbEnabled);
-                    }
-
-                    Float horizontalKB = Float.parseFloat((String) ((FormResponseCustom) response).getResponse(3));
-                    if (!horizontalKB.equals(previousXKB)) {
-                        knockback.update(PvPCKnockback.HORIZONTAL_KB, horizontalKB);
-                    }
-
-                    Float verticalKB = Float.parseFloat((String) ((FormResponseCustom) response).getResponse(4));
-                    if (!verticalKB.equals(previousYKB)) {
-                        knockback.update(PvPCKnockback.VERTICAL_KB, verticalKB);
-                    }
-
-                    Integer speed = Integer.parseInt((String) ((FormResponseCustom) response).getResponse(5));
-                    if (!speed.equals(previousSpeed)) {
-                        knockback.update(PvPCKnockback.SPEED_KB, speed);
-                    }
-
-                } catch (Exception e) {
-
-                    // Checks for any unsuspecting errors.
-                    if(!(e instanceof NumberFormatException))
-                    {
-                        e.printStackTrace();
-                    }
-
-                    responsePlayer.sendMessage(Utils.getPrefix() + TextFormat.RED + " Failed to update the kb of the world.");
-                    pvpWorld.setKBEnabled(previousEnabled);
-                    knockback.update(PvPCKnockback.SPEED_KB, previousSpeed);
-                    knockback.update(PvPCKnockback.HORIZONTAL_KB, previousXKB);
-                    knockback.update(PvPCKnockback.VERTICAL_KB, previousYKB);
-                    return;
-                }
-
-                responsePlayer.sendMessage(Utils.getPrefix() + TextFormat.GREEN + " The kb has been successfully updated.");
-            }
-        });
-
+    public static CustomForm getWorldMenu(Player player, PvPCWorld world, boolean view) {
         String title = view ? "World Information" : "Edit World Configuration";
-        form.setTitle(title);
-
         String desc = view ? "Displays the knockback information of the world." : "Edit the knockback configuration of the world.";
-        form.addElement(new ElementLabel(desc));
-
         PvPCKnockback knockback = world.getKnockback();
-
-        form.addExtraData("view", view);
-        form.addExtraData("world", world.getLevelName());
+        CustomForm form = new CustomForm(title).addLabel(desc);
 
         if (view) {
-            form.addElement(new ElementLabel(TextFormat.WHITE.toString() + "World Name: " + world.getLevelName()));
-            form.addElement(new ElementLabel(TextFormat.WHITE.toString() + "Knockback-Enabled: " + world.isKBEnabled()));
-            form.addElement(new ElementLabel(TextFormat.WHITE.toString() + "Horizontal (X) Knockback: " + knockback.getHorizontalKB()));
-            form.addElement(new ElementLabel(TextFormat.WHITE.toString() + "Vertical (Y) Knockback: " + knockback.getVerticalKB()));
-            form.addElement(new ElementLabel(TextFormat.WHITE.toString() + "Attack Delay: " + knockback.getAttackDelay()));
-            return form;
+            return form.addLabel(TextFormat.WHITE + "World Name: " + world.getLevelName())
+                    .addLabel(TextFormat.WHITE + "Knockback-Enabled: " + world.isKBEnabled())
+                    .addLabel(TextFormat.WHITE + "Horizontal (X) Knockback: " + knockback.getHorizontalKB())
+                    .addLabel(TextFormat.WHITE + "Vertical (Y) Knockback: " + knockback.getVerticalKB())
+                    .addLabel(TextFormat.WHITE + "Attack Delay: " + knockback.getAttackDelay())
+                    .onSubmit((responsePlayer, response) -> getWorldSelectorForm(responsePlayer, true).send(responsePlayer));
         }
 
-        form.addElement(new ElementLabel(TextFormat.WHITE.toString() + "World Name: " + world.getLevelName()));
-        form.addElement(new ElementToggle(TextFormat.WHITE.toString() + "Knockback-Enabled", world.isKBEnabled()));
-        form.addElement(new ElementInput(TextFormat.WHITE + "Horizontal (X) Knockback: ", "Default = 0.4", Float.toString(knockback.getHorizontalKB())));
-        form.addElement(new ElementInput(TextFormat.WHITE + "Vertical (Y) Knockback: ", "Default = 0.4", Float.toString(knockback.getVerticalKB())));
-        form.addElement(new ElementInput(TextFormat.WHITE + "Attack Delay: ", "Default = 10", Integer.toString(knockback.getAttackDelay())));
-        return form;
+        return form.addLabel(TextFormat.WHITE + "World Name: " + world.getLevelName())
+                .addToggle(TextFormat.WHITE + "Knockback-Enabled", world.isKBEnabled())
+                .addInput(TextFormat.WHITE + "Horizontal (X) Knockback: ", "Default = 0.4", Float.toString(knockback.getHorizontalKB()))
+                .addInput(TextFormat.WHITE + "Vertical (Y) Knockback: ", "Default = 0.4", Float.toString(knockback.getVerticalKB()))
+                .addInput(TextFormat.WHITE + "Attack Delay: ", "Default = 10", Integer.toString(knockback.getAttackDelay()))
+                .onSubmit((responsePlayer, response) -> updateWorldKnockback(responsePlayer, world, response));
     }
 
-    /**
-     * Gets the area edit/view menu.
-     *
-     * @param player - The player we are sending the form to.
-     * @param area   - The area we are editing/viewing.
-     * @param type   - The type of action we are doing.
-     * @return - A new Callback Custom Form instance.
-     */
-    public static CallbackCustomForm getAreaMenu(Player player, PvPCArea area, int type) {
-
-        CallbackCustomForm form = new CallbackCustomForm((responsePlayer, response, extraData) -> {
-
-            int typeInfo = (int) extraData.get("type");
-            if (typeInfo == Utils.ACTION_VIEW_AREA) {
-                FormWindow window = PvPCoreForms.getAreaSelectorMenu(responsePlayer, typeInfo);
-                responsePlayer.showFormWindow(window);
-                return;
-            }
-
-            if (response instanceof FormResponseCustom) {
-
-                PvPCArea pvpCArea = PvPCore.getAreaHandler().getArea((String)extraData.get("area"));
-                if(pvpCArea == null)
-                {
-                    // TODO: Send message to the player.
-                    return;
-                }
-
-                PvPCKnockback knockback = pvpCArea.getKnockback();
-
-                int previousSpeed = knockback.getAttackDelay();
-                float previousXKB = knockback.getHorizontalKB(), previousYKB = knockback.getVerticalKB();
-                boolean previousEnabled = pvpCArea.isEnabled();
-
-                try {
-
-                    boolean kbEnabled = (boolean)((FormResponseCustom) response).getResponse(2);
-                    if (previousEnabled != kbEnabled) {
-                        pvpCArea.setEnabled(kbEnabled);
-                    }
-
-                    Float horizontalKB = Float.parseFloat((String) ((FormResponseCustom) response).getResponse(3));
-                    if (!horizontalKB.equals(previousXKB)) {
-                        knockback.update(PvPCKnockback.HORIZONTAL_KB, horizontalKB);
-                    }
-
-                    Float verticalKB = Float.parseFloat((String) ((FormResponseCustom) response).getResponse(4));
-                    if (!verticalKB.equals(previousYKB)) {
-                        knockback.update(PvPCKnockback.VERTICAL_KB, verticalKB);
-                    }
-
-                    Integer speed = Integer.parseInt((String) ((FormResponseCustom) response).getResponse(5));
-                    if (!speed.equals(previousSpeed)) {
-                        knockback.update(PvPCKnockback.SPEED_KB, speed);
-                    }
-
-                } catch (Exception e) {
-
-                    // Checks for any unsuspected errors.
-                    if(!(e instanceof NumberFormatException))
-                    {
-                        e.printStackTrace();
-                    }
-
-                    responsePlayer.sendMessage(Utils.getPrefix() + TextFormat.RED + " Failed to update the kb of the area.");
-                    pvpCArea.setEnabled(previousEnabled);
-                    knockback.update(PvPCKnockback.SPEED_KB, previousSpeed);
-                    knockback.update(PvPCKnockback.HORIZONTAL_KB, previousXKB);
-                    knockback.update(PvPCKnockback.VERTICAL_KB, previousYKB);
-                    return;
-                }
-
-                responsePlayer.sendMessage(Utils.getPrefix() + TextFormat.GREEN + " The kb has been successfully updated.");
-            }
-        });
-
+    public static CustomForm getAreaMenu(Player player, PvPCArea area, int type) {
         String title = type == Utils.ACTION_VIEW_AREA ? "Area Information" : "Edit Area Configuration";
-        form.setTitle(title);
-
         String description = type == Utils.ACTION_VIEW_AREA ? "Displays the knockback information of the area." : "Edit the knockback configuration of the area.";
-        form.addElement(new ElementLabel(description));
-
         PvPCKnockback knockback = area.getKnockback();
+        CustomForm form = new CustomForm(title).addLabel(description);
 
-        form.addExtraData("type", type);
-        form.addExtraData("area", area.getName());
+        if (type == Utils.ACTION_VIEW_AREA) {
+            return form.addLabel(TextFormat.WHITE + "Area Name: " + area.getName())
+                    .addLabel(TextFormat.WHITE + "Knockback-Enabled: " + area.isEnabled())
+                    .addLabel(TextFormat.WHITE + "Horizontal (X) Knockback: " + knockback.getHorizontalKB())
+                    .addLabel(TextFormat.WHITE + "Vertical (Y) Knockback: " + knockback.getVerticalKB())
+                    .addLabel(TextFormat.WHITE + "Attack Delay: " + knockback.getAttackDelay())
+                    .onSubmit((responsePlayer, response) -> getAreaSelectorMenu(responsePlayer, type).send(responsePlayer));
+        }
 
-        if(type == Utils.ACTION_VIEW_AREA)
-        {
-            form.addElement(new ElementLabel(TextFormat.WHITE.toString() + "Area Name: " + area.getName()));
-            form.addElement(new ElementLabel(TextFormat.WHITE.toString() + "Knockback-Enabled: " + area.isEnabled()));
-            form.addElement(new ElementLabel(TextFormat.WHITE.toString() + "Horizontal (X) Knockback: " + knockback.getHorizontalKB()));
-            form.addElement(new ElementLabel(TextFormat.WHITE.toString() + "Vertical (Y) Knockback: " + knockback.getVerticalKB()));
-            form.addElement(new ElementLabel(TextFormat.WHITE.toString() + "Attack Delay: " + knockback.getAttackDelay()));
+        return form.addLabel(TextFormat.WHITE + "Area Name: " + area.getName())
+                .addToggle(TextFormat.WHITE + "Knockback-Enabled", area.isEnabled())
+                .addInput(TextFormat.WHITE + "Horizontal (X) Knockback: ", "Default = 0.4", Float.toString(knockback.getHorizontalKB()))
+                .addInput(TextFormat.WHITE + "Vertical (Y) Knockback: ", "Default = 0.4", Float.toString(knockback.getVerticalKB()))
+                .addInput(TextFormat.WHITE + "Attack Delay: ", "Default = 10", Integer.toString(knockback.getAttackDelay()))
+                .onSubmit((responsePlayer, response) -> updateAreaKnockback(responsePlayer, area, response));
+    }
+
+    public static CustomForm getCreateAreaForm(Player player) {
+        if (!(player instanceof PvPCorePlayer pvpPlayer)) {
+            return getPvPAreaHelpForm(player);
+        }
+
+        HashMap<String, Object> areaInfo = pvpPlayer.getAreaInfo();
+        if (!areaInfo.containsKey("firstPos") || !areaInfo.containsKey("secondPos")) {
+            return getPvPAreaHelpForm(player);
+        }
+
+        return new CustomForm("Create New Area")
+                .addInput("Provide the name of the area that you want to create: ")
+                .onSubmit((responsePlayer, response) -> {
+                    if (!(responsePlayer instanceof PvPCorePlayer responsePvpPlayer)) {
+                        responsePlayer.sendMessage(Utils.getPrefix() + TextFormat.RED + " Internal plugin error. Please rejoin before creating an area.");
+                        return;
+                    }
+
+                    String name = response.getInputResponse(0);
+                    if (name == null || name.trim().isEmpty()) {
+                        responsePlayer.sendMessage(Utils.getPrefix() + TextFormat.RED + " Invalid area name.");
+                        return;
+                    }
+                    responsePvpPlayer.createArea(name.trim());
+                });
+    }
+
+    public static CustomForm getPvPAreaHelpForm(Player player) {
+        CustomForm form = new CustomForm("PvPArea Creation Help")
+                .addLabel("To create a new PvPArea, you must provide the following things:\n"
+                        + "  => The First Position Boundary of the Area\n"
+                        + "  => The Second Position Boundary of the Area\n"
+                        + "  => The name of the PvPArea.")
+                .addLabel("To set the first position boundary of the area, type: " + TextFormat.AQUA + "/pvparea pos1")
+                .addLabel("To set the second position boundary of the area, type: " + TextFormat.AQUA + "/pvparea pos2")
+                .addLabel("You provide the name of the PvPArea upon creation in the PvPArea menu.")
+                .addLabel("You MUST provide the first position AND second position boundary before you create the PvPArea in the form menu.");
+
+        if (!(player instanceof PvPCorePlayer pvpPlayer)) {
             return form;
         }
 
-        form.addElement(new ElementLabel(TextFormat.WHITE.toString() + "Area Name: " + area.getName()));
-        form.addElement(new ElementToggle(TextFormat.WHITE.toString() + "Knockback-Enabled", area.isEnabled()));
-        form.addElement(new ElementInput(TextFormat.WHITE + "Horizontal (X) Knockback: ", "Default = 0.4", Float.toString(knockback.getHorizontalKB())));
-        form.addElement(new ElementInput(TextFormat.WHITE + "Vertical (Y) Knockback: ", "Default = 0.4", Float.toString(knockback.getVerticalKB())));
-        form.addElement(new ElementInput(TextFormat.WHITE + "Attack Delay: ", "Default = 10", Integer.toString(knockback.getAttackDelay())));
-        return form;
-    }
-
-    /**
-     * Gets the form used to create a new area.
-     *
-     * @param player - The player we are sending the form to.
-     * @return - A new form instance.
-     */
-    public static CallbackCustomForm getCreateAreaForm(Player player) {
-
-        if(!(player instanceof PvPCorePlayer))
-        {
-            return PvPCoreForms.getPvPAreaHelpForm(player);
+        HashMap<String, Object> areaInfo = pvpPlayer.getAreaInfo();
+        ArrayList<String> missing = new ArrayList<>();
+        if (!areaInfo.containsKey("firstPos")) {
+            missing.add(" => The First Position Boundary");
+        }
+        if (!areaInfo.containsKey("secondPos")) {
+            missing.add(" => The Second Position Boundary");
         }
 
-        HashMap<String, Object> areaInfo = ((PvPCorePlayer) player).getAreaInfo();
-        if(!areaInfo.containsKey("firstPos") || !areaInfo.containsKey("secondPos"))
-        {
-            return PvPCoreForms.getPvPAreaHelpForm(player);
-        }
-
-        CallbackCustomForm form = new CallbackCustomForm((responsePlayer, response, extraData) -> {
-
-            if(response instanceof FormResponseCustom && responsePlayer instanceof PvPCorePlayer)
-            {
-                String name = ((FormResponseCustom) response).getInputResponse(0);
-                if(name.trim().equals(""))
-                {
-                    responsePlayer.sendMessage(Utils.getPrefix() + TextFormat.RED.toString() + " Invalid area name.");
-                    return;
-                }
-
-                ((PvPCorePlayer) responsePlayer).createArea(name);
-            }
-
-        });
-
-        form.setTitle("Create New Area");
-        form.addElement(new ElementInput("Provide the name of the area that you want to create: "));
-        return form;
-    }
-
-    /**
-     * Gets the PvPArea help form.
-     *
-     * @param player - The player we are sending the form to.
-     * @return - The help custom form.
-     */
-    public static CallbackCustomForm getPvPAreaHelpForm(Player player) {
-
-        CallbackCustomForm form = new CallbackCustomForm();
-
-        form.setTitle("PvPArea Creation Help");
-        form.addElement(new ElementLabel("To create a new PvPArea, you must provide the following things:\n"
-                + "  => The First Position Boundary of the Area\n"
-                + "  => The Second Position Boundary of the Area\n"
-                + "  => The name of the PvPArea."));
-        form.addElement(new ElementLabel("To set the first position boundary of the area, type: "
-                + TextFormat.AQUA.toString() + "/pvparea pos1"));
-        form.addElement(new ElementLabel("To set the second position boundary of the area, type: "
-                + TextFormat.AQUA.toString() + "/pvparea pos2"));
-        form.addElement(new ElementLabel("You provide the name of the PvPArea upon creation in the PvPArea menu."));
-        form.addElement(new ElementLabel("You MUST provide the first position AND second position boundary before you create the PvPArea in the form menu."));
-
-        if (!(player instanceof PvPCorePlayer)) {
-            return form;
-        }
-
-        HashMap<String, Object> areaInfo = ((PvPCorePlayer) player).getAreaInfo();
-        String information = null;
-
-        if (areaInfo.size() == 0) {
-            information = " => The First Position Boundary\n => The Second Position Boundary";
+        if (missing.isEmpty()) {
+            form.addLabel(TextFormat.GREEN + "You have successfully provided all of the necessary information.");
         } else {
-            if (!areaInfo.containsKey("firstPos")) {
-                information = " => The First Position Boundary";
-            }
-
-            if (!areaInfo.containsKey("secondPos")) {
-                if (information == null) {
-                    information = " => The Second Position Boundary";
-                } else {
-                    information = "\n => The Second Position Boundary";
-                }
-            }
+            form.addLabel(TextFormat.RED + "You still need to set the following information before you can create a PvPArea:" + TextFormat.WHITE + "\n" + String.join("\n", missing));
         }
-
-        if(information != null) {
-            form.addElement(new ElementLabel(TextFormat.RED.toString() + "You still need to set the following information before you can create a PvPArea:" + TextFormat.WHITE.toString() + "\n" + information));
-        } else {
-            form.addElement(new ElementLabel(TextFormat.GREEN + "You have successfully provided all of the necessary information."));
-        }
-
         return form;
     }
 
-    /**
-     * Gets the delete menu.
-     *
-     * @param player - The player we are sending the form to.
-     * @param area   - The PvPCArea form.
-     * @return - A new instance of the delete menu form.
-     */
-    public static CallbackSimpleForm getDeleteMenu(Player player, PvPCArea area) {
+    public static SimpleForm getDeleteMenu(Player player, PvPCArea area) {
+        return new SimpleForm("Delete Area", "Are you sure you want to delete the PvPArea? If you accept, you can't undo this action. Select 'Yes' if you want to delete the area, or 'No' if you don't want to delete the area.")
+                .addButton("Yes", YES_ICON, responsePlayer -> {
+                    PvPCArea currentArea = PvPCore.getAreaHandler().getArea(area.getName());
+                    if (currentArea == null) {
+                        responsePlayer.sendMessage(Utils.getPrefix() + TextFormat.RED + " That area no longer exists.");
+                        return;
+                    }
+                    PvPCore.getAreaHandler().deleteArea(currentArea);
+                    responsePlayer.sendMessage(Utils.getPrefix() + TextFormat.RED + " You have successfully deleted the area.");
+                })
+                .addButton("No", NO_ICON, responsePlayer -> getAreaSelectorMenu(responsePlayer, Utils.ACTION_DELETE_AREA).send(responsePlayer));
+    }
 
-        CallbackSimpleForm form = new CallbackSimpleForm((responsePlayer, response, extraData) -> {
+    private static void updateWorldKnockback(Player player, PvPCWorld world, CustomResponse response) {
+        PvPCWorld currentWorld = PvPCore.getWorldHandler().getWorld(world.getLevelName());
+        if (currentWorld == null) {
+            player.sendMessage(Utils.getPrefix() + TextFormat.RED + " Failed to find that world.");
+            return;
+        }
+        updateKnockback(player, currentWorld.getKnockback(), response, currentWorld.isKBEnabled(), currentWorld::setKBEnabled, "world");
+    }
 
-            if (response instanceof FormResponseSimple) {
+    private static void updateAreaKnockback(Player player, PvPCArea area, CustomResponse response) {
+        PvPCArea currentArea = PvPCore.getAreaHandler().getArea(area.getName());
+        if (currentArea == null) {
+            player.sendMessage(Utils.getPrefix() + TextFormat.RED + " Failed to find that area.");
+            return;
+        }
+        updateKnockback(player, currentArea.getKnockback(), response, currentArea.isEnabled(), currentArea::setEnabled, "area");
+    }
 
-                PvPCArea pvpArea = PvPCore.getAreaHandler().getArea((String)extraData.get("area"));
-                if(pvpArea == null)
-                {
-                    // TODO: Send message.
-                    return;
-                }
+    private static void updateKnockback(Player player, PvPCKnockback knockback, CustomResponse response, boolean previousEnabled, BooleanSetter enabledSetter, String targetName) {
+        int previousSpeed = knockback.getAttackDelay();
+        float previousHorizontal = knockback.getHorizontalKB();
+        float previousVertical = knockback.getVerticalKB();
 
-                int buttonID = ((FormResponseSimple) response).getClickedButtonId();
-                switch (buttonID) {
-                    case 0:
-                        PvPCore.getAreaHandler().deleteArea(pvpArea);
-                        responsePlayer.sendMessage(Utils.getPrefix() + TextFormat.RED.toString() + " You have successfully deleted the area.");
-                        break;
-                    case 1:
-                        FormWindow window = PvPCoreForms.getAreaSelectorMenu(responsePlayer, Utils.ACTION_DELETE_AREA);
-                        responsePlayer.showFormWindow(window);
-                        break;
-                }
-            }
-        });
+        try {
+            enabledSetter.set(response.getToggleResponse(2));
+            knockback.update(PvPCKnockback.HORIZONTAL_KB, Float.parseFloat(response.getInputResponse(3)));
+            knockback.update(PvPCKnockback.VERTICAL_KB, Float.parseFloat(response.getInputResponse(4)));
+            knockback.update(PvPCKnockback.SPEED_KB, Integer.parseInt(response.getInputResponse(5)));
+        } catch (RuntimeException exception) {
+            enabledSetter.set(previousEnabled);
+            knockback.update(PvPCKnockback.HORIZONTAL_KB, previousHorizontal);
+            knockback.update(PvPCKnockback.VERTICAL_KB, previousVertical);
+            knockback.update(PvPCKnockback.SPEED_KB, previousSpeed);
+            player.sendMessage(Utils.getPrefix() + TextFormat.RED + " Failed to update the kb of the " + targetName + ".");
+            return;
+        }
 
-        form.setTitle("Delete Area");
-        form.setContent("Are you sure you want to delete the PvPArea? If you accept, you can't undo this action."
-                + " Select 'Yes' if you want to delete the area, or 'No' if you don't want to delete the area.");
+        player.sendMessage(Utils.getPrefix() + TextFormat.GREEN + " The kb has been successfully updated.");
+    }
 
-        form.addButton("Yes", ElementButtonImageData.IMAGE_DATA_TYPE_PATH, "textures/ui/check.png");
-        form.addButton("No", ElementButtonImageData.IMAGE_DATA_TYPE_PATH, "textures/ui/cancel.png");
-
-        form.addExtraData("area", area.getName());
-
-        return form;
+    @FunctionalInterface
+    private interface BooleanSetter {
+        void set(boolean value);
     }
 }
