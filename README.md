@@ -1,5 +1,5 @@
 # PvPCore
-This is a plugin for PocketMine-MP and Nukkit. This repository migrates the old PvPCore nukkit repository with the PMMP repository. As such, it contains code that's compatible for both softwares.
+This is a plugin for PocketMine-MP and PowerNukkitX. This repository migrates the old PvPCore Nukkit repository with the PMMP repository. As such, it contains code that's compatible for both softwares.
 
 ## Table of Contents
 <!--ts-->
@@ -25,11 +25,9 @@ This plugin allows you to easily change the knockback the players take in a spec
 - [x] Knockback affecting a World.
 - [x] Knockback affecting an Area
 - [x] PocketMine Support (php)
-	- [x] 1.14.60 Support
-	- [x] 1.16.0 Support
-- [ ] Nukkit Support (Java)
-	- [x] 1.14.6 Support
-	- [ ] 1.16.0 Support
+	- [x] 26.13 Support
+- [x] PowerNukkitX Support (Java)
+	- [x] 26.13 Support
 
 ## Configuration
 Fortunately, it's now much easier to configure the Knockback as compared to previous versions of KitKB. Instead of using commands, users now utilize the pvpcore **form menu.**
